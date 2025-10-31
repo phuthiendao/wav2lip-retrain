@@ -83,6 +83,7 @@ The result is saved (by default) in `results/result_voice.mp4`. You can specify 
 - Experiment with the `--resize_factor` argument, to get a lower-resolution video. Why? The models are trained on faces that were at a lower resolution. You might get better, visually pleasing results for 720p videos than for 1080p videos (in many cases, the latter works well too).
 - The Wav2Lip model without GAN usually needs more experimenting with the above two to get the most ideal results, and sometimes, can give you a better result as well.
 Preparing LRS2 for training
+
 ----------
 ##### LRS2 dataset folder structure
 ```
@@ -105,8 +106,8 @@ preprocessed_root (lrs2_preprocessed)
 |	│   ├── *.jpg
 |	│   ├── audio.wav
 ```
-
 ----------
+
 Train!
 ----------
 There are two major steps: (i) Train the expert lip-sync discriminator, (ii) Train the Wav2Lip model(s).
@@ -120,14 +121,57 @@ You can either train the model without the additional visual quality discriminat
 ```bash
 python wav2lip_train.py --data_root lrs2_preprocessed/ --checkpoint_dir <folder_to_save_checkpoints> --syncnet_checkpoint_path <path_to_expert_disc_checkpoint>
 ```
+-----------------------------------
 
-------------------
-## To train with the visual quality discriminator, you should run `hq_wav2lip_train.py` instead. The arguments for both files are similar. In both cases, you can resume training as well. Look at `python wav2lip_train.py --help` for more details. You can also set additional less commonly-used hyper-parameters at the bottom of the `hparams.py` file.
+## How to train!
+There are 2 options:
+- Refine the trained parameters of LSR2 to get results that match your expectations.
+- Use your own dataset for training and evaluation.
+
+### Option 1:
+* Choose between two pretrained models `wav2lip.pth` or `wav2lip_gan.pth`: Try both to see which one works for your data.
+* If lip-sync is important (e.g., foreign language), use wav2lip.pth
+* `--pads <top> <bottom> <left> <right>`: Increase bottom padding to include the chin area, improving lip-sync if the mouth is cut. Experiment to avoid mouth misalignment
+* `--nosmooth`: If the result has artifacts like crooked mouths or "double mouths", turning off smoothing will fix this
+* `--resize_factor <integer>`:Lowering res gives more visually pleasing results (smooth, less noise)
+* `--box <top> <bottom> <left> <right>`: Specify manual bounding box if automatic face detection is poor.
+* `--crop <top> <bottom> <left> <right>`: Crop face area manually.
+
+### Option 2:
+1. Preprocessing: use script `preprocess.py`
+* Convert raw video to image frames (jpg) and audio (wav) for faster training.
+* Put the filelists `(train/val/test .txt)` into the `filelists/`
+* Run:
+```bash 
+python preprocess.py --data_root path/to/lrs2/main --preprocessed_root path/to/lrs2_preprocessed --batch_size 32 --num_workers 8
+```
+
+2. Training
+* Train Expert Discriminator (SyncNet): use `color_syncnet_train.py`
+* Run:
+```bash
+python color_syncnet_train.py --data_root path/to/lrs2_preprocessed --checkpoint_dir path/to/checkpoints/syncnet --batch_size 128 --num_workers 8
+```
+* Train Wav2Lip
+```bash
+python wav2lip_train.py --data_root path/to/lrs2_preprocessed --checkpoint_dir path/to/checkpoints/wav2lip --syncnet_checkpoint_path path/to/syncnet_checkpoint.pth --batch_size 32 --num_workers 8
+```
+
+3. Evaluation
+* Run inference on the test set: 
+```bassh
+python inference.py --checkpoint_path your_model.pth --face test_video.mp4 --audio test_audio.wav`
+```
+* Run scripts in evaluation/ (e.g. `scores_LSE.py` for LSE).
+
+
+To train with the visual quality discriminator, you should run `hq_wav2lip_train.py` instead. The arguments for both files are similar. In both cases, you can resume training as well. Look at `python wav2lip_train.py --help` for more details. You can also set additional less commonly-used hyper-parameters at the bottom of the `hparams.py` file.
 
 ------------------------------------
 Training on datasets other than LRS2
 
 Training on other datasets might require modifications to the code. Please read the following before you raise an issue:
+- Recommendation: At least 4-10 hours of diverse video (multiple speakers, languages, camera angles) to achieve acceptable eval loss (~0.2 for sync loss). Small datasets will lead to overfit or artifacts.
 - You might not get good results by training/fine-tuning on a few minutes of a single speaker. This is a separate research problem, to which we do not have a solution yet. Thus, we would most likely not be able to resolve your issue.
 - You must train the expert discriminator for your own dataset before training Wav2Lip.
 - If it is your own dataset downloaded from the web, in most cases, needs to be sync-corrected.
@@ -139,7 +183,6 @@ Training on other datasets might require modifications to the code. Please read 
 Please check the `evaluation/` folder for the instructions.
 
 ----------
-
 ## License and Citation
 ```
 @inproceedings{10.1145/3394171.3413532,
