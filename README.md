@@ -162,8 +162,17 @@ python wav2lip_train.py --data_root path/to/lrs2_preprocessed --checkpoint_dir p
 ```bassh
 python inference.py --checkpoint_path your_model.pth --face test_video.mp4 --audio test_audio.wav`
 ```
-* Run scripts in evaluation/ (e.g. `scores_LSE.py` for LSE).
+* Run scripts in evaluation/ (e.g. `scores_LSE.py` for LSE) and compares
 
+
+| Metric       | Meaning              | Good Value (on LRS2) |
+|---------------|----------------------|-----------------------|
+| **LSE-D**     | Lip-sync deviation   | < 2.0                 |
+| **FID**       | Image quality        | < 25                  |
+| **Sync Loss** | Sync evaluation loss | ≈ 0.2                 |
+
+
+--------------------------------
 
 To train with the visual quality discriminator, you should run `hq_wav2lip_train.py` instead. The arguments for both files are similar. In both cases, you can resume training as well. Look at `python wav2lip_train.py --help` for more details. You can also set additional less commonly-used hyper-parameters at the bottom of the `hparams.py` file.
 
